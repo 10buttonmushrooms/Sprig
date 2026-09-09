@@ -1,0 +1,11 @@
+*.apk
+*.apk.idsig
+deps/
+out/
+tools/
+work/apk-*/
+work/build-out/
+work/dump/
+work/*.log
+work/*-log.txt
+work/*.png
