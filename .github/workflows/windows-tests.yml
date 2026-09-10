@@ -1,0 +1,40 @@
+name: Windows PowerShell tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  regression-tests:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Windows PowerShell 5.1
+        shell: powershell
+        run: .\work\scripts\test_pipeline.ps1
+      - name: PowerShell 7
+        shell: pwsh
+        run: .\work\scripts\test_pipeline.ps1
+
+  build-smoke:
+    needs: regression-tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build libsprig.so with hosted Android NDK
+        shell: powershell
+        run: |
+          $candidates = @(
+            $env:ANDROID_NDK_LATEST_HOME,
+            $env:ANDROID_NDK_HOME,
+            $env:ANDROID_NDK_ROOT
+          ) | Where-Object { $_ -and (Test-Path $_) }
+
+          if (-not $candidates -and $env:ANDROID_HOME -and (Test-Path "$env:ANDROID_HOME\ndk")) {
+            $candidates = @(Get-ChildItem "$env:ANDROID_HOME\ndk" -Directory | Sort-Object Name -Descending | ForEach-Object { $_.FullName })
+          }
+
+          if (-not $candidates) { throw 'No Android NDK found on windows-latest.' }
+          $env:ANDROID_NDK_ROOT = $candidates[0]
+          Write-Host "Using Android NDK: $env:ANDROID_NDK_ROOT"
+          .\work\scripts\build_mod.ps1
