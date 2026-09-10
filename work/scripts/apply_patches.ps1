@@ -19,11 +19,24 @@ $targets = @(
 
 function Test-GitApply {
     param([string]$Repo, [string]$Patch, [switch]$Reverse)
+
     $args = @('apply', '--check')
     if ($Reverse) { $args += '--reverse' }
     $args += $Patch
-    & git -C $Repo @args 2>$null
-    return ($LASTEXITCODE -eq 0)
+
+    $oldPreference = $ErrorActionPreference
+    try {
+        # A failed --check is expected while deciding whether a patch is
+        # pristine or already applied. Windows PowerShell 5.1 otherwise turns
+        # redirected native stderr into a terminating NativeCommandError.
+        $ErrorActionPreference = 'Continue'
+        & git -C $Repo @args 2>$null
+        $code = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $oldPreference
+    }
+
+    return ($code -eq 0)
 }
 
 foreach ($t in $targets) {
