@@ -5,7 +5,7 @@
 
 .DESCRIPTION
   Pipeline:
-    1. apktool d (cached) -> work\apk-unpacked\
+    1. apktool d (cached by input APK hash) -> work\apk-unpacked\
     2. Discover the launcher activity from AndroidManifest.xml.
     3. Copy libsprig.so into the APK.
     4. Patch the launcher activity to call System.loadLibrary("sprig").
@@ -39,12 +39,28 @@ if (-not $signerCandidate) {
 }
 $SignerJar = $signerCandidate.FullName
 
-# ---- 1. Unpack (cached) ----
+# ---- 1. Unpack (cached by exact APK hash) ----
 $Manifest = Join-Path $Unpacked 'AndroidManifest.xml'
-if (-not (Test-Path $Manifest)) {
-    Write-Host "Unpacking $InputApk (first time)..."
+$CacheStamp = Join-Path $Unpacked '.sprig-input-sha256'
+$inputHash = (Get-FileHash $InputApk -Algorithm SHA256).Hash.ToLowerInvariant()
+$cachedHash = $null
+if (Test-Path $CacheStamp) {
+    $cachedHash = (Get-Content -Raw $CacheStamp).Trim().ToLowerInvariant()
+}
+
+$needsUnpack = (-not (Test-Path $Manifest)) -or ($cachedHash -ne $inputHash)
+if ($needsUnpack) {
+    if (Test-Path $Unpacked) {
+        Write-Host 'Input APK changed or cache is incomplete; rebuilding apktool cache...'
+        Remove-Item -LiteralPath $Unpacked -Recurse -Force
+    } else {
+        Write-Host "Unpacking $InputApk (first time)..."
+    }
+
     & java -jar $ApktoolJar d -f -o $Unpacked $InputApk
     if ($LASTEXITCODE -ne 0) { throw "apktool unpack failed (exit $LASTEXITCODE)." }
+
+    [System.IO.File]::WriteAllText($CacheStamp, $inputHash, [System.Text.UTF8Encoding]::new($false))
 } else {
     Write-Host "Using cached unpack at $Unpacked"
 }
@@ -116,48 +132,53 @@ if ($alreadyPatched) {
     }
     if ($methodIdx -lt 0) { throw "Could not find onCreate(Landroid/os/Bundle;)V in $smaliFile" }
 
-    # Find .locals N (or .registers N) inside that method
+    # Find .locals N inside that method. Increasing .registers changes the
+    # physical v-register aliases for parameters, so blindly bumping it can
+    # corrupt methods that use vN aliases instead of pN. Fail explicitly rather
+    # than emit invalid smali. The supported PvZH launcher uses .locals.
     $localsIdx = -1
     $localsCount = 0
-    $isRegisters = $false
+    $usesRegisters = $false
     for ($j = $methodIdx + 1; $j -lt $lines.Count; $j++) {
         $t = $lines[$j].TrimStart()
         if ($t -match '^\.end\s+method') { break }
-        if ($t -match '^\.locals\s+(\d+)')    { $localsIdx = $j; $localsCount = [int]$Matches[1]; $isRegisters = $false; break }
-        if ($t -match '^\.registers\s+(\d+)') { $localsIdx = $j; $localsCount = [int]$Matches[1]; $isRegisters = $true;  break }
+        if ($t -match '^\.locals\s+(\d+)') {
+            $localsIdx = $j
+            $localsCount = [int]$Matches[1]
+            break
+        }
+        if ($t -match '^\.registers\s+\d+') {
+            $localsIdx = $j
+            $usesRegisters = $true
+            break
+        }
     }
     if ($localsIdx -lt 0) { throw "Could not find .locals/.registers in onCreate of $smaliFile" }
+    if ($usesRegisters) {
+        throw "Automatic smali injection does not safely support .registers in onCreate of $smaliFile; expected .locals."
+    }
 
-    # Bump locals by 1, use the new free register vN (where N was old .locals).
+    # Bump locals by 1 and use the newly allocated free local vN.
     $newCount = $localsCount + 1
     $regIndex = $localsCount
 
-    # Preserve indentation from the original .locals line.
     $indent = ''
     if ($lines[$localsIdx] -match '^(\s+)') { $indent = $Matches[1] } else { $indent = '    ' }
-
-    if ($isRegisters) {
-        $lines[$localsIdx] = "$indent.registers $newCount"
-    } else {
-        $lines[$localsIdx] = "$indent.locals $newCount"
-    }
+    $lines[$localsIdx] = "$indent.locals $newCount"
 
     # Walk past method-prologue directives so the injection lands at the first
-    # real instruction. Directives that are valid between .locals and the first
-    # opcode: .param, .local, .line, .prologue, blank lines, # comments, and
-    # multi-line .annotation ... .end annotation blocks.
+    # real instruction. Skip annotations as whole blocks.
     $insertIdx = $localsIdx + 1
     while ($insertIdx -lt $lines.Count) {
         $t = $lines[$insertIdx].TrimStart()
         if ($t -eq '' -or $t.StartsWith('#')) { $insertIdx++; continue }
         if ($t -match '^\.(param|local|line|prologue)\b') { $insertIdx++; continue }
         if ($t -match '^\.annotation\b') {
-            # Skip the entire annotation block, inclusive of .end annotation.
             $insertIdx++
             while ($insertIdx -lt $lines.Count -and ($lines[$insertIdx].TrimStart() -notmatch '^\.end\s+annotation\b')) {
                 $insertIdx++
             }
-            if ($insertIdx -lt $lines.Count) { $insertIdx++ }  # past .end annotation
+            if ($insertIdx -lt $lines.Count) { $insertIdx++ }
             continue
         }
         break
@@ -175,7 +196,6 @@ if ($alreadyPatched) {
     $newLines += $injection
     if ($insertIdx -lt $lines.Count) { $newLines += $lines[$insertIdx..($lines.Count - 1)] }
 
-    # Write UTF-8 without BOM.
     [System.IO.File]::WriteAllLines($smaliFile, [string[]]$newLines, [System.Text.UTF8Encoding]::new($false))
     Write-Host "Patched onCreate in $smaliFile (.locals $localsCount -> $newCount, used v$regIndex)."
 }
