@@ -113,13 +113,15 @@ foreach ($d in (Get-ChildItem $Unpacked -Directory -Filter 'smali*')) {
     $candidate = Join-Path $d.FullName $smaliRel
     if (Test-Path $candidate) { $smaliFile = $candidate; break }
 }
-if (-not $smaliFile) { throw "Smali for $activityName not found under $Unpacked\smali*\" }
+if (-not $smaliFile) {
+    throw ('Smali for {0} not found under {1}\smali*' -f $activityName, $Unpacked)
+}
 
 $rawText = Get-Content -Raw -Path $smaliFile
 $alreadyPatched = $rawText -match 'const-string\s+v\d+,\s*"sprig"\s*[\r\n]+\s*invoke-static\s*\{v\d+\}\s*,\s*Ljava/lang/System;->loadLibrary\(Ljava/lang/String;\)V'
 
 if ($alreadyPatched) {
-    Write-Host "Smali already contains loadLibrary(`"sprig`") — skipping patch."
+    Write-Host 'Smali already contains loadLibrary("sprig") - skipping patch.'
 } else {
     $lines = Get-Content -Path $smaliFile
 
@@ -186,9 +188,9 @@ if ($alreadyPatched) {
 
     $injection = @(
         "$indent# Sprig",
-        "${indent}const-string v$regIndex, `"sprig`"",
-        "${indent}invoke-static {v$regIndex}, Ljava/lang/System;->loadLibrary(Ljava/lang/String;)V",
-        ""
+        ('{0}const-string v{1}, "sprig"' -f $indent, $regIndex),
+        ('{0}invoke-static {{v{1}}}, Ljava/lang/System;->loadLibrary(Ljava/lang/String;)V' -f $indent, $regIndex),
+        ''
     )
 
     $newLines = @()
