@@ -15,8 +15,17 @@ if (-not (Test-Path $OutApk)) {
 }
 
 Write-Host "Installing $OutApk ..."
-$installOutput = & adb install -r $OutApk 2>&1
-$installCode   = $LASTEXITCODE
+$oldPreference = $ErrorActionPreference
+try {
+    # adb commonly writes useful failure diagnostics to stderr. Windows
+    # PowerShell 5.1 must be allowed to capture those diagnostics so the code
+    # below can inspect the exit status and explain signature mismatches.
+    $ErrorActionPreference = 'Continue'
+    $installOutput = @(& adb install -r $OutApk 2>&1)
+    $installCode   = $LASTEXITCODE
+} finally {
+    $ErrorActionPreference = $oldPreference
+}
 $installOutput | ForEach-Object { Write-Host $_ }
 
 if ($installCode -ne 0 -or ($installOutput -join "`n") -match 'INSTALL_FAILED') {
@@ -29,5 +38,4 @@ if ($installCode -ne 0 -or ($installOutput -join "`n") -match 'INSTALL_FAILED') 
 }
 
 Write-Host "Install OK."
-
 Write-Host "Launch the game on the device and watch: adb logcat -s Sprig"
