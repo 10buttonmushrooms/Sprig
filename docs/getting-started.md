@@ -25,7 +25,7 @@ Connect an arm64 device with USB debugging enabled and run:
 .\work\scripts\all.ps1
 ```
 
-That downloads pinned BNM, Dobby, and APK tools, applies the compatibility patches, builds Sprig, repacks and signs the APK, and runs `adb install -r`.
+That downloads pinned BNM, Dobby, and APK tools, applies the compatibility patches, builds Sprig, repacks and signs your `input/Game.apk`, and runs `adb install -r`.
 
 Individual stages are also available:
 
@@ -61,4 +61,4 @@ Search [types.csv](reference/types.csv) for exact namespaces and [the API refere
 - `INSTALL_FAILED_UPDATE_INCOMPATIBLE`: the installed app uses another signing key. Back up anything important before uninstalling it.
 - The JNI log appears but `Sprig loaded` does not: unlock the device and launch the game again so Unity reaches `il2cpp_init`.
 - The game crashes after adding a hook: check the namespace, name, overload count, return type, parameter types, and whether it is an instance method; then inspect `adb logcat` and the newest Android tombstone.
-- Changes do not appear: delete `work/apk-unpacked` to force a fresh APK unpack, then rebuild.
+- Changes do not appear: confirm `input/Game.apk` is the expected APK, then rebuild; the unpack cache refreshes when its SHA-256 changes.

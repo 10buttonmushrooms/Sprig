@@ -67,6 +67,49 @@ try {
     Remove-Item -LiteralPath $sandbox -Recurse -Force -ErrorAction SilentlyContinue
 }
 
+# Exercise expected native-command failures under ErrorActionPreference=Stop.
+$sandbox = Join-Path ([System.IO.Path]::GetTempPath()) "sprig-native-errors-$([guid]::NewGuid())"
+$scripts = Join-Path $sandbox 'work\scripts'
+try {
+    New-Item -ItemType Directory -Force $scripts | Out-Null
+    Copy-Item (Join-Path $PSScriptRoot 'fetch_deps.ps1'), (Join-Path $PSScriptRoot 'apply_patches.ps1'), (Join-Path $PSScriptRoot 'install.ps1') $scripts
+
+    function git {
+        if ($args -contains 'rev-parse') {
+            Write-Error 'fatal: ambiguous argument HEAD'
+            $global:LASTEXITCODE = 128
+        } else { $global:LASTEXITCODE = 0 }
+    }
+    $fetchError = $null
+    try { & (Join-Path $scripts 'fetch_deps.ps1') } catch { $fetchError = $_.Exception.Message }
+    Assert-True (-not $fetchError) "A fresh dependency repository must tolerate its unborn HEAD: $fetchError"
+
+    New-Item -ItemType Directory -Force (Join-Path $sandbox 'deps\Dobby'), (Join-Path $sandbox 'deps\BNM-Android'), (Join-Path $sandbox 'work\patches') | Out-Null
+    Set-Content (Join-Path $sandbox 'work\patches\dobby.patch') 'patch'
+    Set-Content (Join-Path $sandbox 'work\patches\bnm-android.patch') 'patch'
+    function git {
+        if ($args -contains '--reverse') {
+            Write-Error 'patch does not apply in reverse'
+            $global:LASTEXITCODE = 1
+        } else { $global:LASTEXITCODE = 0 }
+    }
+    $patchError = $null
+    try { & (Join-Path $scripts 'apply_patches.ps1') } catch { $patchError = $_.Exception.Message }
+    Assert-True (-not $patchError) "A pristine patch must tolerate a failed reverse check: $patchError"
+
+    New-Item -ItemType Directory -Force (Join-Path $sandbox 'out') | Out-Null
+    Set-Content (Join-Path $sandbox 'out\Sprig.apk') 'apk'
+    function adb {
+        Write-Error 'Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE]'
+        $global:LASTEXITCODE = 1
+    }
+    $installError = $null
+    try { & (Join-Path $scripts 'install.ps1') } catch { $installError = $_.Exception.Message }
+    Assert-True ($installError -eq 'adb install failed (exit 1).') 'adb stderr must reach install.ps1 friendly failure handling.'
+} finally {
+    Remove-Item -LiteralPath $sandbox -Recurse -Force -ErrorAction SilentlyContinue
+}
+
 if ($failures.Count -gt 0) {
     $failures | ForEach-Object { Write-Host "FAIL: $_" }
     throw "$($failures.Count) pipeline regression test(s) failed."
