@@ -116,3 +116,4 @@ if ($failures.Count -gt 0) {
 }
 
 Write-Host 'All Sprig pipeline regression tests passed.'
+$global:LASTEXITCODE = 0
