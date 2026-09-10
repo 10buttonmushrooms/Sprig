@@ -9,13 +9,13 @@ Sprig is a minimal native modding base for the Android version of Plants vs. Zom
 
 ## Setup
 
-Install Git, Java 17+, CMake, Ninja, Android SDK Platform Tools (`adb`), and the Android NDK. Set `ANDROID_NDK_ROOT` to the NDK directory, then:
+Install Git, Java 17+, CMake, Ninja, Android SDK Platform Tools (`adb`), and the Android NDK. Set `ANDROID_NDK_ROOT` to the NDK directory. Place a legally obtained PvZH 1.65.27 APK at `input/Game.apk`, then run:
 
 ```powershell
 .\work\scripts\all.ps1
 ```
 
-The build script downloads the exact BNM and Dobby revisions Sprig expects.
+The build script downloads the exact BNM and Dobby revisions Sprig expects, along with apktool and uber-apk-signer. It does not download the game APK.
 
 See the [setup guide](docs/setup.md) for the full prerequisite, device, install, and verification steps.
 
