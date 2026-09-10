@@ -1,0 +1,18 @@
+name: Windows PowerShell tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  regression-tests:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Windows PowerShell 5.1
+        shell: powershell
+        run: .\work\scripts\test_pipeline.ps1
+      - name: PowerShell 7
+        if: always()
+        shell: pwsh
+        run: .\work\scripts\test_pipeline.ps1
