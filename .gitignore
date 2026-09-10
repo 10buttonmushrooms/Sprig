@@ -1,4 +1,4 @@
-*.apk
+input/*.apk
 *.apk.idsig
 deps/
 out/

@@ -2,7 +2,10 @@
 
 Sprig is a minimal native modding base for the Android version of Plants vs. Zombies Heroes. It builds a C++ library, inserts it into the bundled APK, signs the APK, and installs it on an arm64 Android device.
 
-You must supply your own legally obtained APK. This repository does not include the game, extracted game assets, or built APKs.
+## Included mods
+
+- Bypasses the minimum app-version check.
+- Selects the newest available content association.
 
 ## Setup
 
