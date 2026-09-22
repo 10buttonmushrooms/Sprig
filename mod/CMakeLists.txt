@@ -22,6 +22,7 @@ target_include_directories(BNM PRIVATE ${CMAKE_SOURCE_DIR}/../deps/Dobby/include
 
 add_library(sprig SHARED
     src/main.cpp
+    src/bloom.cpp
 )
 
 target_include_directories(sprig PRIVATE
@@ -29,6 +30,9 @@ target_include_directories(sprig PRIVATE
     ${CMAKE_SOURCE_DIR}/../deps/BNM-Android/include
     ${CMAKE_SOURCE_DIR}/../deps/BNM-Android/external/include
 )
+
+include(cmake/Bloom.cmake)
+bloom_discover_modules(sprig "${CMAKE_SOURCE_DIR}/../Bloom")
 
 target_link_libraries(sprig PRIVATE
     BNM

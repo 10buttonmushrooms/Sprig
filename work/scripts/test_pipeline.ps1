@@ -40,6 +40,7 @@ Assert-True ($install -match "ErrorActionPreference\s*=\s*'Continue'") 'install.
 $inject = Read-Script 'inject_mod.ps1'
 Assert-True ($inject -match '\.sprig-input-sha256') 'inject_mod.ps1 must invalidate its apktool cache when input/Game.apk changes.'
 Assert-True ($inject -match 'registers.+not supported|does not safely support.+registers') 'inject_mod.ps1 must reject unsafe .registers injection instead of corrupting parameter registers.'
+Assert-True ($inject -match 'BloomRoot' -and $inject -match 'assets\\sprig\\bloom') "inject_mod.ps1 must stage Bloom module bundles in Sprig's APK asset namespace."
 
 # A missing APK should fail locally and must not attempt any network download.
 $sandbox = Join-Path ([System.IO.Path]::GetTempPath()) "sprig-pipeline-$([guid]::NewGuid())"
