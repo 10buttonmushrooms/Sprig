@@ -37,4 +37,10 @@ jobs:
           if (-not $candidates) { throw 'No Android NDK found on windows-latest.' }
           $env:ANDROID_NDK_ROOT = $candidates[0]
           Write-Host "Using Android NDK: $env:ANDROID_NDK_ROOT"
+
+          # Exercise Bloom discovery, source wiring, registration macros, and
+          # config embedding without shipping an active sample module.
+          Copy-Item -Recurse .\Bloom\_templates\Core .\Bloom\SmokeCore
+          Copy-Item -Recurse .\Bloom\_templates\PnP .\Bloom\SmokePnP
+
           .\work\scripts\build_mod.ps1
