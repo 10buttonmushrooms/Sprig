@@ -6,6 +6,7 @@
 #include <BNM/Method.hpp>
 #include <BNM/Utils.hpp>
 
+#include "bloom/bloom.hpp"
 #include "log.h"
 
 using FailsMinimumAppVersion = bool (*)(void *, const void *);
@@ -23,6 +24,8 @@ static void *UseLatestContent(void *self, BNM::Structures::Mono::String *, const
 }
 
 static void OnIl2CppLoaded() {
+    sprig::bloom::InitializePnP();
+
     auto versionMap = BNM::Class("PvZCards.Game", "AssetVersionMap");
     findLatestAssociation = versionMap.GetMethod("FindLastGoodAssociation", 1);
     if (!findLatestAssociation.IsValid()) {

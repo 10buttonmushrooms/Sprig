@@ -21,6 +21,12 @@ See the [setup guide](docs/setup.md) for the full prerequisite, device, install,
 
 Unlock the device and launch PvZH. Use `adb logcat -s Sprig` to confirm `Sprig loaded` and `Latest content association selected`. The output APK is `out/Sprig.apk`. Re-signing changes its certificate, so replacing an official installation may require uninstalling it first, which can erase local save data.
 
+## Bloom modules
+
+Bloom is Sprig's add-on layer. Drop a module under `Bloom/` and the build discovers it automatically. **Core** modules act like reusable libraries; **PnP** modules auto-initialize after IL2CPP is ready and use their own `config.ini` for behavior without requiring users to edit C++.
+
+See the [Bloom guide](docs/bloom.md) for the module layout, config helpers, and templates.
+
 ## Learn
 
 - [Beginner guide](docs/getting-started.md): architecture, first hook, and troubleshooting

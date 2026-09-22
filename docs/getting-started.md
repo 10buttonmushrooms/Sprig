@@ -13,7 +13,7 @@ Sprig adds one native library to the APK:
 3. It adds `System.loadLibrary("sprig")` to the launcher activity.
 4. Android calls `JNI_OnLoad` when the library loads.
 5. BNM waits for Unity's `il2cpp_init`, then calls `OnIl2CppLoaded`.
-6. Your hooks are registered there, after IL2CPP metadata is ready.
+6. Bloom PnP modules initialize there, followed by Sprig's built-in hooks, after IL2CPP metadata is ready.
 
 Dobby installs native trampolines. BNM provides name-based access to IL2CPP classes, methods, and fields. Never use BNM before `OnIl2CppLoaded`.
 
@@ -40,6 +40,12 @@ Individual stages are also available:
 `mod/src/main.cpp` keeps the 1.65.27 executable and metadata compatible with the included dumps while handling EA's newer content map. It makes `FailsMinimumAppVersion` return `false`, then replaces `AssetVersionMap.FindAssociation` with `FindLastGoodAssociation` using a maximum version. That selects the newest association returned by the live map.
 
 Run `adb logcat -s Sprig` after launch. It should show `Latest content association selected`. New content still has to be compatible with the old client.
+
+## Bloom modules
+
+Put reusable or drop-in modules under `Bloom/`. Core modules are compiled as library-like code that you call explicitly. PnP modules register themselves and run automatically from `OnIl2CppLoaded`, with settings read from their own `config.ini`.
+
+See [Bloom](bloom.md) for the folder convention, config API, bundle staging, and templates.
 
 ## Common areas
 

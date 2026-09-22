@@ -8,11 +8,12 @@
     1. apktool d (cached by input APK hash) -> work\apk-unpacked\
     2. Discover the launcher activity from AndroidManifest.xml.
     3. Copy libsprig.so into the APK.
-    4. Patch the launcher activity to call System.loadLibrary("sprig").
+    4. Stage optional Bloom module bundles under assets/sprig/bloom/.
+    5. Patch the launcher activity to call System.loadLibrary("sprig").
        (idempotent — skips if already present).
-    5. apktool b -> work\build-out\Game-rebuilt.apk
-    6. uber-apk-signer -> work\build-out\signed\
-    7. Stage the signed APK at out\Sprig.apk.
+    6. apktool b -> work\build-out\Game-rebuilt.apk
+    7. uber-apk-signer -> work\build-out\signed\
+    8. Stage the signed APK at out\Sprig.apk.
 #>
 
 $ErrorActionPreference = 'Stop'
@@ -24,6 +25,7 @@ $InputApk    = Join-Path $ProjectRoot 'input\Game.apk'
 $Unpacked    = Join-Path $ProjectRoot 'work\apk-unpacked'
 $BuildOut    = Join-Path $ProjectRoot 'work\build-out'
 $LibSo       = Join-Path $BuildOut 'cmake\libsprig.so'
+$BloomRoot    = Join-Path $ProjectRoot 'Bloom'
 $Rebuilt     = Join-Path $BuildOut 'Game-rebuilt.apk'
 $SignedDir   = Join-Path $BuildOut 'signed'
 $OutApk      = Join-Path $ProjectRoot 'out\Sprig.apk'
@@ -106,7 +108,32 @@ if (-not (Test-Path $LibDir)) { New-Item -ItemType Directory -Path $LibDir | Out
 Copy-Item -Force $LibSo (Join-Path $LibDir 'libsprig.so')
 Write-Host "Copied libsprig.so -> $LibDir"
 
-# ---- 4. Patch smali (idempotent) ----
+# ---- 4. Stage Bloom bundles ----
+# The apktool tree is cached, so clear Sprig's Bloom asset namespace first to
+# prevent bundles from removed modules surviving into later APKs.
+$BloomAssets = Join-Path $Unpacked 'assets\sprig\bloom'
+if (Test-Path $BloomAssets) {
+    Remove-Item -LiteralPath $BloomAssets -Recurse -Force
+}
+
+if (Test-Path $BloomRoot) {
+    foreach ($module in (Get-ChildItem -LiteralPath $BloomRoot -Directory)) {
+        if ($module.Name.StartsWith('_') -or $module.Name.StartsWith('.')) { continue }
+
+        $manifest = Join-Path $module.FullName 'bloom.ini'
+        if (-not (Test-Path $manifest)) { continue }
+
+        $bundles = Join-Path $module.FullName 'bundles'
+        if (-not (Test-Path $bundles)) { continue }
+
+        $destination = Join-Path $BloomAssets (Join-Path $module.Name 'bundles')
+        New-Item -ItemType Directory -Force -Path $destination | Out-Null
+        Get-ChildItem -LiteralPath $bundles -Force | Copy-Item -Destination $destination -Recurse -Force
+        Write-Host "Bloom: staged bundles for $($module.Name)"
+    }
+}
+
+# ---- 5. Patch smali (idempotent) ----
 $smaliRel = ($activityName -replace '\.', '\') + '.smali'
 $smaliFile = $null
 foreach ($d in (Get-ChildItem $Unpacked -Directory -Filter 'smali*')) {
@@ -202,7 +229,7 @@ if ($alreadyPatched) {
     Write-Host "Patched onCreate in $smaliFile (.locals $localsCount -> $newCount, used v$regIndex)."
 }
 
-# ---- 5. Repack ----
+# ---- 6. Repack ----
 # Keep 1.65.27 installable over the mistakenly installed 1.66.7 build without
 # uninstalling or clearing saves. Only Android's package revision changes.
 $ApktoolConfig = Join-Path $Unpacked 'apktool.yml'
@@ -213,7 +240,7 @@ Write-Host "Repacking APK..."
 & java -jar $ApktoolJar b -f -o $Rebuilt $Unpacked
 if ($LASTEXITCODE -ne 0) { throw "apktool repack failed (exit $LASTEXITCODE)." }
 
-# ---- 6. Sign ----
+# ---- 7. Sign ----
 if (Test-Path $SignedDir) { Remove-Item -Recurse -Force $SignedDir }
 New-Item -ItemType Directory -Path $SignedDir | Out-Null
 Write-Host "Signing..."
