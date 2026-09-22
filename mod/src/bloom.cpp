@@ -60,7 +60,7 @@ bool EqualsIgnoreCase(std::string_view left, std::string_view right) {
 } // namespace
 
 bool RegisterPnP(std::string_view module, InitFunction init) {
-    if (module.empty() || init == nullptr) return false;
+    if (Initialized() || module.empty() || init == nullptr) return false;
 
     auto &modules = Modules();
     const auto duplicate = std::find_if(

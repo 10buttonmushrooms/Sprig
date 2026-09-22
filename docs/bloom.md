@@ -77,7 +77,7 @@ BLOOM_REGISTER_PNP(Initialize);
 
 Bloom assigns `BLOOM_MODULE_ID` from the directory name at compile time, so modules do not need to hard-code their own name.
 
-PnP initializers run once, in module-id order, from Sprig's existing `OnIl2CppLoaded` path. BNM is ready at that point.
+PnP initializers run once, in module-id order, from Sprig's existing `OnIl2CppLoaded` path after Sprig's built-in hook setup is attempted. BNM is ready at that point. A base-hook lookup failure does not stop Bloom from initializing.
 
 ## Configuration
 

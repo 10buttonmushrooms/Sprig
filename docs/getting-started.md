@@ -13,7 +13,7 @@ Sprig adds one native library to the APK:
 3. It adds `System.loadLibrary("sprig")` to the launcher activity.
 4. Android calls `JNI_OnLoad` when the library loads.
 5. BNM waits for Unity's `il2cpp_init`, then calls `OnIl2CppLoaded`.
-6. Bloom PnP modules initialize there, followed by Sprig's built-in hooks, after IL2CPP metadata is ready.
+6. Sprig's built-in hooks are installed there, then Bloom PnP modules initialize after IL2CPP metadata is ready.
 
 Dobby installs native trampolines. BNM provides name-based access to IL2CPP classes, methods, and fields. Never use BNM before `OnIl2CppLoaded`.
 
