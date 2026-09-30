@@ -8,6 +8,7 @@
 #>
 
 $ErrorActionPreference = 'Stop'
+. "$PSScriptRoot\native.ps1"
 
 $ProjectRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
 $PatchDir    = Join-Path $ProjectRoot 'work\patches'
@@ -50,8 +51,7 @@ foreach ($t in $targets) {
     }
 
     if (Test-GitApply -Repo $t.Repo -Patch $t.Patch) {
-        & git -C $t.Repo apply $t.Patch
-        if ($LASTEXITCODE -ne 0) { throw "Failed to apply $($t.Patch) to $($t.Repo)." }
+        Invoke-Native git -C $t.Repo apply $t.Patch
         Write-Host "Applied $name patch."
         continue
     }

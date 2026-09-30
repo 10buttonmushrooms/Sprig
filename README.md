@@ -23,6 +23,7 @@ Unlock the device and launch PvZH. Use `adb logcat -s Sprig` to confirm `Sprig l
 
 ## Learn
 
+- [Bloom modules](Bloom/README.md): install Core or PnP modules without editing Sprig
 - [Beginner guide](docs/getting-started.md): architecture, first hook, and troubleshooting
 - [PvZH API](docs/reference/api.md): useful classes and hook targets
 - [Type index](docs/reference/types.csv): searchable list of 5,834 `PvZCards.*` types

@@ -7,6 +7,7 @@
 #include <BNM/Utils.hpp>
 
 #include "log.h"
+#include <bloom/bloom.h>
 
 using FailsMinimumAppVersion = bool (*)(void *, const void *);
 static FailsMinimumAppVersion originalFailsMinimumAppVersion = nullptr;
@@ -22,7 +23,7 @@ static void *UseLatestContent(void *self, BNM::Structures::Mono::String *, const
     return findLatestAssociation[self](BNM::CreateMonoString("2147483647.2147483647.2147483647.2147483647"));
 }
 
-static void OnIl2CppLoaded() {
+static void InstallBuiltInHooks() {
     auto versionMap = BNM::Class("PvZCards.Game", "AssetVersionMap");
     findLatestAssociation = versionMap.GetMethod("FindLastGoodAssociation", 1);
     if (!findLatestAssociation.IsValid()) {
@@ -49,6 +50,11 @@ static void OnIl2CppLoaded() {
     }
 
     LOG_INFO("Sprig loaded");
+}
+
+static void OnIl2CppLoaded() {
+    InstallBuiltInHooks();
+    Bloom::InitializePnP();
 }
 
 extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void * /*reserved*/) {

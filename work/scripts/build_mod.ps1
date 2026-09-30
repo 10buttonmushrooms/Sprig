@@ -8,6 +8,7 @@
 #>
 
 $ErrorActionPreference = 'Stop'
+. "$PSScriptRoot\native.ps1"
 
 $ProjectRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
 $ModDir      = Join-Path $ProjectRoot 'mod'
@@ -29,13 +30,11 @@ if (-not (Test-Path $BuildOut)) {
 
 # Fetch the pinned dependencies and apply their compatibility patches.
 & "$PSScriptRoot\fetch_deps.ps1"
-if ($LASTEXITCODE -ne 0) { throw "fetch_deps.ps1 failed (exit $LASTEXITCODE)." }
 
 & "$PSScriptRoot\apply_patches.ps1"
-if ($LASTEXITCODE -ne 0) { throw "apply_patches.ps1 failed (exit $LASTEXITCODE)." }
 
 # Configure (idempotent — CMake caches).
-& cmake `
+Invoke-Native cmake `
     -S $ModDir `
     -B $CmakeDir `
     -G Ninja `
@@ -43,11 +42,9 @@ if ($LASTEXITCODE -ne 0) { throw "apply_patches.ps1 failed (exit $LASTEXITCODE).
     '-DANDROID_ABI=arm64-v8a' `
     '-DANDROID_PLATFORM=android-21' `
     '-DCMAKE_BUILD_TYPE=Release'
-if ($LASTEXITCODE -ne 0) { throw "CMake configure failed (exit $LASTEXITCODE)." }
 
 # Build.
-& cmake --build $CmakeDir --config Release
-if ($LASTEXITCODE -ne 0) { throw "CMake build failed (exit $LASTEXITCODE)." }
+Invoke-Native cmake --build $CmakeDir --config Release
 
 $BuiltSo = Join-Path $CmakeDir 'libsprig.so'
 if (-not (Test-Path $BuiltSo)) { throw "Expected output not found: $BuiltSo" }

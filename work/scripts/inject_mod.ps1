@@ -16,6 +16,7 @@
 #>
 
 $ErrorActionPreference = 'Stop'
+. "$PSScriptRoot\native.ps1"
 
 $ProjectRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
 $ApktoolJar  = Join-Path $ProjectRoot 'tools\apktool\apktool_3.0.2.jar'
@@ -57,8 +58,7 @@ if ($needsUnpack) {
         Write-Host "Unpacking $InputApk (first time)..."
     }
 
-    & java -jar $ApktoolJar d -f -o $Unpacked $InputApk
-    if ($LASTEXITCODE -ne 0) { throw "apktool unpack failed (exit $LASTEXITCODE)." }
+    Invoke-Native java -jar $ApktoolJar d -f -o $Unpacked $InputApk
 
     [System.IO.File]::WriteAllText($CacheStamp, $inputHash, [System.Text.UTF8Encoding]::new($false))
 } else {
@@ -105,6 +105,21 @@ $LibDir = Join-Path $Unpacked 'lib\arm64-v8a'
 if (-not (Test-Path $LibDir)) { New-Item -ItemType Directory -Path $LibDir | Out-Null }
 Copy-Item -Force $LibSo (Join-Path $LibDir 'libsprig.so')
 Write-Host "Copied libsprig.so -> $LibDir"
+
+# CMake stages assets for exactly the modules compiled into this library.
+# Replace this subtree on every run so the cached unpack cannot retain removals.
+$BloomStage = Join-Path $BuildOut 'cmake\bloom-assets'
+$BloomDestination = [System.IO.Path]::GetFullPath((Join-Path $Unpacked 'assets\sprig\bloom'))
+$ExpectedBloomDestination = [System.IO.Path]::GetFullPath("$ProjectRoot\work\apk-unpacked\assets\sprig\bloom")
+if ($BloomDestination -ne $ExpectedBloomDestination) { throw 'Unexpected Bloom asset destination.' }
+if (-not (Test-Path -LiteralPath $BloomStage -PathType Container)) {
+    throw 'Bloom asset staging is missing. Run work\scripts\build_mod.ps1 first.'
+}
+if (Test-Path -LiteralPath $BloomDestination) { Remove-Item -LiteralPath $BloomDestination -Recurse -Force }
+New-Item -ItemType Directory -Force -Path $BloomDestination | Out-Null
+Get-ChildItem -LiteralPath $BloomStage -Force | ForEach-Object {
+    Copy-Item -LiteralPath $_.FullName -Destination $BloomDestination -Recurse -Force
+}
 
 # ---- 4. Patch smali (idempotent) ----
 $smaliRel = ($activityName -replace '\.', '\') + '.smali'
@@ -210,15 +225,13 @@ $ApktoolConfig = Join-Path $Unpacked 'apktool.yml'
 if (Test-Path $Rebuilt) { Remove-Item -Force $Rebuilt }
 if (-not (Test-Path $BuildOut)) { New-Item -ItemType Directory -Path $BuildOut | Out-Null }
 Write-Host "Repacking APK..."
-& java -jar $ApktoolJar b -f -o $Rebuilt $Unpacked
-if ($LASTEXITCODE -ne 0) { throw "apktool repack failed (exit $LASTEXITCODE)." }
+Invoke-Native java -jar $ApktoolJar b -f -o $Rebuilt $Unpacked
 
 # ---- 6. Sign ----
 if (Test-Path $SignedDir) { Remove-Item -Recurse -Force $SignedDir }
 New-Item -ItemType Directory -Path $SignedDir | Out-Null
 Write-Host "Signing..."
-& java -jar $SignerJar --apks $Rebuilt --out $SignedDir
-if ($LASTEXITCODE -ne 0) { throw "uber-apk-signer failed (exit $LASTEXITCODE)." }
+Invoke-Native java -jar $SignerJar --apks $Rebuilt --out $SignedDir
 
 $signed = Get-ChildItem $SignedDir -Filter '*.apk' | Select-Object -First 1
 if (-not $signed) { throw "No signed apk produced in $SignedDir." }

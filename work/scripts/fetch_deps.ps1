@@ -1,5 +1,6 @@
 #requires -Version 5.1
 $ErrorActionPreference = 'Stop'
+. "$PSScriptRoot\native.ps1"
 
 $ProjectRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
 
@@ -36,24 +37,20 @@ foreach ($dependency in $dependencies) {
         }
 
         New-Item -ItemType Directory -Force $path | Out-Null
-        & git -C $path init --quiet
-        if ($LASTEXITCODE -ne 0) { throw "Failed to initialize $($dependency.Name)." }
+        Invoke-Native git -C $path init --quiet
     }
 
     # Generated dependency checkouts must keep upstream LF bytes so the pinned
     # compatibility patches apply identically even when global core.autocrlf is true.
-    & git -C $path config core.autocrlf false
-    if ($LASTEXITCODE -ne 0) { throw "Failed to configure line endings for $($dependency.Name)." }
+    Invoke-Native git -C $path config core.autocrlf false
 
     $originProbe = Invoke-GitProbe -GitArgs @('-C', $path, 'remote', 'get-url', 'origin')
     if ($originProbe.ExitCode -ne 0) {
-        & git -C $path remote add origin $dependency.Url
-        if ($LASTEXITCODE -ne 0) { throw "Failed to add origin for $($dependency.Name)." }
+        Invoke-Native git -C $path remote add origin $dependency.Url
     } else {
         $origin = [string]($originProbe.Output | Select-Object -First 1)
         if ($origin -ne $dependency.Url) {
-            & git -C $path remote set-url origin $dependency.Url
-            if ($LASTEXITCODE -ne 0) { throw "Failed to repair origin for $($dependency.Name)." }
+            Invoke-Native git -C $path remote set-url origin $dependency.Url
         }
     }
 
@@ -69,11 +66,9 @@ foreach ($dependency in $dependencies) {
             throw "$($dependency.Name) has local changes at the wrong revision."
         }
 
-        & git -C $path fetch --depth 1 origin $dependency.Commit
-        if ($LASTEXITCODE -ne 0) { throw "Failed to fetch $($dependency.Name)." }
+        Invoke-Native git -C $path fetch --depth 1 origin $dependency.Commit
 
-        & git -C $path checkout --quiet --detach FETCH_HEAD
-        if ($LASTEXITCODE -ne 0) { throw "Failed to check out $($dependency.Name)." }
+        Invoke-Native git -C $path checkout --quiet --detach FETCH_HEAD
     }
 
     Write-Host "$($dependency.Name) $($dependency.Commit)"
