@@ -20,7 +20,7 @@ static bool BlockUpdate(void *, const void *) { return false; }
 
 static void *UseLatestContent(void *self, BNM::Structures::Mono::String *, const void *) {
     LOG_INFO("Latest content association selected");
-    return findLatestAssociation[self](BNM::CreateMonoString("2147483647.2147483647.2147483647.2147483647"));
+    return findLatestAssociation[self](BNM::CreateMonoString("1.67.8"));
 }
 
 static void InstallBuiltInHooks() {
