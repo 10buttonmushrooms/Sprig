@@ -9,3 +9,6 @@ work/dump/
 work/*.log
 work/*-log.txt
 work/*.png
+Bloom/Altrox/bundles/
+Bloom/Altrox/fifty-hp/
+Bloom/Altrox/.setup

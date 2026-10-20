@@ -2,3 +2,4 @@
 $ErrorActionPreference = 'Stop'
 
 & "$PSScriptRoot\test_pipeline.ps1"
+& "$PSScriptRoot\test_bloom.ps1"

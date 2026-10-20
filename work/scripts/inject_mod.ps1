@@ -13,21 +13,27 @@
     5. apktool b -> work\build-out\Game-rebuilt.apk
     6. uber-apk-signer -> work\build-out\signed\
     7. Stage the signed APK at out\Sprig.apk.
+
+  -Apk <Name> uses work\apk-unpacked-<Name> and work\build-out\apk\<Name>, applies the
+  Bloom\<Name> [Apk] package, label and icon, and writes out\<Name>.apk.
 #>
+param([string]$Apk)
 
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\native.ps1"
+. "$PSScriptRoot\apk.ps1"
 
 $ProjectRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+$Target      = Get-SprigApk $Apk
 $ApktoolJar  = Join-Path $ProjectRoot 'tools\apktool\apktool_3.0.2.jar'
 $SignerDir   = Join-Path $ProjectRoot 'tools\uber-apk-signer'
 $InputApk    = Join-Path $ProjectRoot 'input\Game.apk'
-$Unpacked    = Join-Path $ProjectRoot 'work\apk-unpacked'
-$BuildOut    = Join-Path $ProjectRoot 'work\build-out'
-$LibSo       = Join-Path $BuildOut 'cmake\libsprig.so'
+$Unpacked    = $Target.Unpacked
+$BuildOut    = $Target.BuildOut
+$LibSo       = Join-Path $Target.CMakeDir 'libsprig.so'
 $Rebuilt     = Join-Path $BuildOut 'Game-rebuilt.apk'
 $SignedDir   = Join-Path $BuildOut 'signed'
-$OutApk      = Join-Path $ProjectRoot 'out\Sprig.apk'
+$OutApk      = $Target.OutApk
 
 # ---- Preflight ----
 foreach ($p in @($ApktoolJar, $InputApk, $LibSo)) {
@@ -64,6 +70,11 @@ if ($needsUnpack) {
 } else {
     Write-Host "Using cached unpack at $Unpacked"
 }
+
+# APK identity edits start from the decoded manifest every run, so they never stack.
+$PristineManifest = Join-Path $Unpacked '.sprig-AndroidManifest.xml'
+if (-not (Test-Path $PristineManifest)) { Copy-Item -LiteralPath $Manifest -Destination $PristineManifest }
+if ($Target.Module) { Set-ApkIdentity -Target $Target -PristineManifest $PristineManifest }
 
 # ---- 2. Discover launcher activity ----
 [xml]$x = Get-Content -Raw $Manifest
@@ -108,10 +119,13 @@ Write-Host "Copied libsprig.so -> $LibDir"
 
 # CMake stages assets for exactly the modules compiled into this library.
 # Replace this subtree on every run so the cached unpack cannot retain removals.
-$BloomStage = Join-Path $BuildOut 'cmake\bloom-assets'
+$BloomStage = Join-Path $Target.CMakeDir 'bloom-assets'
 $BloomDestination = [System.IO.Path]::GetFullPath((Join-Path $Unpacked 'assets\sprig\bloom'))
-$ExpectedBloomDestination = [System.IO.Path]::GetFullPath("$ProjectRoot\work\apk-unpacked\assets\sprig\bloom")
-if ($BloomDestination -ne $ExpectedBloomDestination) { throw 'Unexpected Bloom asset destination.' }
+$ExpectedUnpackRoot = [System.IO.Path]::GetFullPath("$ProjectRoot\work") + '\apk-unpacked'
+if (-not $BloomDestination.StartsWith($ExpectedUnpackRoot, [System.StringComparison]::OrdinalIgnoreCase) -or
+    $BloomDestination -notmatch '\\work\\apk-unpacked(-[A-Za-z][A-Za-z0-9_-]*)?\\assets\\sprig\\bloom$') {
+    throw 'Unexpected Bloom asset destination.'
+}
 if (-not (Test-Path -LiteralPath $BloomStage -PathType Container)) {
     throw 'Bloom asset staging is missing. Run work\scripts\build_mod.ps1 first.'
 }

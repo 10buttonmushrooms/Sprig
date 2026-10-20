@@ -7,7 +7,11 @@
 #include <BNM/Utils.hpp>
 
 #include "log.h"
+#include <bloom/android.h>
 #include <bloom/bloom.h>
+
+static JavaVM *javaVm = nullptr;
+JavaVM *Bloom::JavaVm() { return javaVm; }
 
 using FailsMinimumAppVersion = bool (*)(void *, const void *);
 static FailsMinimumAppVersion originalFailsMinimumAppVersion = nullptr;
@@ -58,6 +62,7 @@ static void OnIl2CppLoaded() {
 }
 
 extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void * /*reserved*/) {
+    javaVm = vm;
     JNIEnv *env = nullptr;
     if (vm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6) != JNI_OK || env == nullptr) {
         LOG_ERR("JNI_OnLoad: GetEnv failed");
