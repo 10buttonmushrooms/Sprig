@@ -2,7 +2,9 @@
 
 Copy `_templates/Core` or `_templates/PnP` into `Bloom/<Name>`, then build
 Sprig normally. Names use letters, digits, `_`, and `-`, starting with a letter.
-Templates and directories without a valid `bloom.ini` are ignored.
+Templates and directories without a valid `bloom.ini` are ignored by CMake; `sprig lint`, which
+`build_mod.ps1` runs first, reports an invalid `bloom.ini` as an error so the build stops instead.
+Writing a module? Start with [AGENTS.md](../AGENTS.md).
 
 ```text
 Bloom/<Name>/

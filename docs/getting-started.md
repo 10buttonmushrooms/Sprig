@@ -60,5 +60,6 @@ Search [types.csv](reference/types.csv) for exact namespaces and [the API refere
 - `libdobby.so not found`: Sprig must link `dobby_static`, not the shared Dobby target.
 - `INSTALL_FAILED_UPDATE_INCOMPATIBLE`: the installed app uses another signing key. Back up anything important before uninstalling it.
 - The JNI log appears but `Sprig loaded` does not: unlock the device and launch the game again so Unity reaches `il2cpp_init`.
-- The game crashes after adding a hook: check the namespace, name, overload count, return type, parameter types, and whether it is an instance method; then inspect `adb logcat` and the newest Android tombstone.
+- The game crashes after adding a hook: check the namespace, name, overload count, return type, parameter types, and whether it is an instance method; then inspect `adb logcat` and the newest Android tombstone. `.\sprig.ps1 find Type.Method` prints the exact hook signature, and `.\sprig.ps1 lint` checks yours.
+- `sprig lint found errors`: `build_mod.ps1` checks every module against `work/dump/dump.cs` before compiling. Each finding names the file, line and fix ([docs/agents/lint.md](agents/lint.md)). `build_mod.ps1 -NoLint` builds anyway.
 - Changes do not appear: confirm `input/Game.apk` is the expected APK, then rebuild; the unpack cache refreshes when its SHA-256 changes.

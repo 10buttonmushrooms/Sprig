@@ -1,16 +1,14 @@
 #requires -Version 5.1
 <#
 .SYNOPSIS
-  Installs out\Sprig.apk, or out\<Name>.apk with -Apk <Name>, on the connected device via adb.
+  Installs out\Sprig.apk on the connected device via adb.
 #>
-param([string]$Apk)
 
 $ErrorActionPreference = 'Stop'
-. "$PSScriptRoot\apk.ps1"
 
-$Target      = Get-SprigApk $Apk
-$OutApk      = $Target.OutApk
-$Package     = $Target.Package
+$ProjectRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+$OutApk      = Join-Path $ProjectRoot 'out\Sprig.apk'
+$Package     = 'com.ea.gp.pvzheroes'
 
 if (-not (Test-Path $OutApk)) {
     throw "$OutApk not found. Run work\scripts\inject_mod.ps1 (or all.ps1) first."

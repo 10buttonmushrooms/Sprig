@@ -36,7 +36,6 @@ include(cmake/Bloom.cmake)
 target_link_libraries(sprig PRIVATE
     BNM
     dobby_static
-    android
     log
 )
 

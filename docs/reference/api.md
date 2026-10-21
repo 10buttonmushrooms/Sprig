@@ -2,6 +2,10 @@
 
 This reference targets Sprig's bundled APK and was distilled from PvZH-Decomp commit `dda825d568c6a5c866b5eaec0ea26bdbdf94f1de`.
 
+The RVAs and offsets below are for mapping crash addresses only: never use them as addresses in
+code. Look methods and fields up by name, and get exact signatures with `.\sprig.ps1 find`
+([docs/agents/hooks.md](../agents/hooks.md)).
+
 ## Localization
 
 `PvZCards.Utilities.LocalizationMapper` is the safest first area to modify.
@@ -44,7 +48,7 @@ Use [cards.csv](cards.csv) for known card IDs and display data.
 
 PvZH card abilities are data-driven. JSON objects identify components and queries through `$type`.
 
-- `PvZCards.Core.Serialization.SerializedObjectCreator.CreateObject(Dictionary<string, object>)` — `0x222263C`; resolves `$type` to an IL2CPP object.
+- `PvZCards.Core.Serialization.SerializedObjectCreator.CreateObject(Dictionary<string, object>)` — `0x222263C`; resolves `$type` to an IL2CPP object. To add a new `$type`, create a class: see [docs/agents/card-dsl.md](../agents/card-dsl.md).
 - `PvZCards.Core.Application.SerializationBinder.BindSerializers(IInjector)` — `0x223EDEC`; boot-time registration point for custom serializers.
 
 Components are under `PvZCards.Engine.Components`; queries are under `PvZCards.Engine.Queries`. Search [types.csv](types.csv), then verify the selected class in your dump.

@@ -24,6 +24,8 @@ Unlock the device and launch PvZH. Use `adb logcat -s Sprig` to confirm `Sprig l
 ## Learn
 
 - [Bloom modules](Bloom/README.md): install Core or PnP modules without editing Sprig
+- [AGENTS.md](AGENTS.md) and [docs/agents](docs/agents/): the workflow and guides for writing mods (card DSL types, hooks, BNM classes, debugging), for people and AI agents alike
+- `.\sprig.ps1 find <Type.Member>` looks up classes, fields and exact hook signatures in `work/dump/dump.cs`; `.\sprig.ps1 lint` checks modules against it (`build_mod.ps1` runs it)
 - [Beginner guide](docs/getting-started.md): architecture, first hook, and troubleshooting
 - [PvZH API](docs/reference/api.md): useful classes and hook targets
 - [Type index](docs/reference/types.csv): searchable list of 5,834 `PvZCards.*` types

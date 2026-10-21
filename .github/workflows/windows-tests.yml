@@ -11,10 +11,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Windows PowerShell 5.1
         shell: powershell
-        run: .\work\scripts\test_pipeline.ps1
+        run: |
+          .\work\scripts\test_pipeline.ps1
+          .\work\scripts\test_sprig_tools.ps1
       - name: PowerShell 7
         shell: pwsh
-        run: .\work\scripts\test_pipeline.ps1
+        run: |
+          .\work\scripts\test_pipeline.ps1
+          .\work\scripts\test_sprig_tools.ps1
 
   build-smoke:
     needs: regression-tests
@@ -38,3 +42,5 @@ jobs:
           $env:ANDROID_NDK_ROOT = $candidates[0]
           Write-Host "Using Android NDK: $env:ANDROID_NDK_ROOT"
           .\work\scripts\build_mod.ps1
+          # With the NDK and deps\ in place, this also runs the lint compiler-tier checks.
+          .\work\scripts\test_sprig_tools.ps1

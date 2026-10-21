@@ -26,9 +26,6 @@ set(CMAKE_CXX_STANDARD 20)
 add_executable(sprig check.cpp src/bloom.cpp)
 target_include_directories(sprig PRIVATE include)
 include(cmake/Bloom.cmake)
-if(BLOOM_APK)
-    target_compile_definitions(sprig PRIVATE EXPECT_PHONE)
-endif()
 '@
     Write-Fixture 'mod/check.cpp' @'
 #include <bloom/bloom.h>
@@ -36,13 +33,8 @@ endif()
 #include <thread>
 #include "core.h"
 int calls = 0;
-int phone_calls = 0;
 int main() {
-#ifdef EXPECT_PHONE
-    assert(Bloom::Modules().size() == 4 && Bloom::FindModule("Phone"));
-#else
-    assert(Bloom::Modules().size() == 3 && !Bloom::FindModule("Phone"));
-#endif
+    assert(Bloom::Modules().size() == 3);
     assert(Bloom::FindModule("Library")->type == Bloom::Type::Core);
     assert(!Bloom::FindModule("Invalid"));
     assert(!Bloom::FindModule("Core")); // templates must not install themselves
@@ -53,11 +45,6 @@ int main() {
     again.join();
     Bloom::InitializePnP();
     assert(calls == 1);
-#ifdef EXPECT_PHONE
-    assert(phone_calls == 1);
-#else
-    assert(phone_calls == 0);
-#endif
 }
 '@
     Write-Fixture 'Bloom/Library/bloom.ini' "[Other]`nType=PnP`n[Bloom]`nType=Core`n"
@@ -100,21 +87,9 @@ BLOOM_REGISTER_PNP(Init);
     Write-Fixture 'Bloom/Invalid/bloom.ini' "[Other]`nType=PnP`n"
     Write-Fixture 'Bloom/Invalid/main.cpp' '#error Invalid modules must be skipped'
     Write-Fixture 'Bloom/Invalid/bundles/bad.bin' 'bad'
-    Write-Fixture 'Bloom/Phone/bloom.ini' "[Bloom]`nType=PnP`n[Apk]`nLabel=Phone`n"
-    Write-Fixture 'Bloom/Phone/main.cpp' @'
-#include <bloom/bloom.h>
-#ifndef EXPECT_PHONE
-#error APK modules must stay out of other builds
-#endif
-extern int phone_calls;
-static void Init() { ++phone_calls; }
-BLOOM_REGISTER_PNP(Init);
-'@
-    Write-Fixture 'Bloom/Phone/bundles/phone.bin' 'phone'
     Invoke-Native cmake -S "$sandbox\mod" -B "$sandbox\build" -G 'Visual Studio 17 2022' -A x64
     Invoke-Native cmake --build "$sandbox\build" --config Debug
     Invoke-Native "$sandbox\build\Debug\sprig.exe"
-    Assert-Bloom (-not (Test-Path "$sandbox\build\bloom-assets\Phone")) 'APK module assets must stay out of the default build.'
     Assert-Bloom (Test-Path "$sandbox\build\bloom-assets\Plugin\bundles\nested\example.bin") 'Nested bundles were not staged.'
     Assert-Bloom (Test-Path "$sandbox\build\bloom-assets\Plugin\textures\icon.txt") 'Arbitrary asset directories were not staged.'
     Assert-Bloom (-not (Test-Path "$sandbox\build\bloom-assets\Plugin\src")) 'Code directories must not be staged.'
@@ -131,19 +106,7 @@ BLOOM_REGISTER_PNP(Init);
     Invoke-Native "$sandbox\build\Debug\sprig.exe"
     Assert-Bloom (-not (Test-Path "$sandbox\build\bloom-assets\Plugin\textures\icon.txt")) 'Removed assets linger in staging.'
     Assert-Bloom (Test-Path "$sandbox\build\bloom-assets\Plugin\bundles\new.bin") 'New assets were not discovered.'
-
-    # -DBLOOM_APK adds exactly that [Apk] module; an unknown one is a configure error.
-    Invoke-Native cmake -S "$sandbox\mod" -B "$sandbox\build-phone" -G 'Visual Studio 17 2022' -A x64 '-DBLOOM_APK=Phone'
-    Invoke-Native cmake --build "$sandbox\build-phone" --config Debug
-    Invoke-Native "$sandbox\build-phone\Debug\sprig.exe"
-    Assert-Bloom (Test-Path "$sandbox\build-phone\bloom-assets\Phone\bundles\phone.bin") 'APK module assets were not staged in their APK build.'
-    $missingApk = $null
-    try { Invoke-Native cmake -S "$sandbox\mod" -B "$sandbox\build-missing" -G 'Visual Studio 17 2022' -A x64 '-DBLOOM_APK=Missing' 2>&1 | Out-Null }
-    catch { $missingApk = $_.Exception.Message }
-    Assert-Bloom ([bool]$missingApk) 'An unknown BLOOM_APK must fail configuration.'
     Write-Host 'All Bloom integration checks passed.'
-    # The expected configure failure must not become this script's exit code.
-    $global:LASTEXITCODE = 0
 } finally {
     # The target is the literal, uniquely named temp directory created above.
     if (Test-Path $sandbox) { Remove-Item -LiteralPath $sandbox -Recurse -Force }
